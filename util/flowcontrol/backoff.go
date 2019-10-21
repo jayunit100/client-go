@@ -55,7 +55,7 @@ func NewBackOff(initial, max time.Duration) *Backoff {
 	}
 }
 
-// Get the current backoff Duration
+// Get returns the current backoff Duration.
 func (p *Backoff) Get(id string) time.Duration {
 	p.RLock()
 	defer p.RUnlock()
@@ -67,7 +67,7 @@ func (p *Backoff) Get(id string) time.Duration {
 	return delay
 }
 
-// move backoff to the next mark, capping at maxDuration
+// Next moves backoff to the next mark, capping at maxDuration.
 func (p *Backoff) Next(id string, eventTime time.Time) {
 	p.Lock()
 	defer p.Unlock()
@@ -88,7 +88,7 @@ func (p *Backoff) Reset(id string) {
 	delete(p.perItemBackoff, id)
 }
 
-// Returns True if the elapsed time since eventTime is smaller than the current backoff window
+// IsInBackOffSince returns true iff elapsed time since eventTime < current backoff window.
 func (p *Backoff) IsInBackOffSince(id string, eventTime time.Time) bool {
 	p.RLock()
 	defer p.RUnlock()
@@ -102,7 +102,7 @@ func (p *Backoff) IsInBackOffSince(id string, eventTime time.Time) bool {
 	return p.Clock.Since(eventTime) < entry.backoff
 }
 
-// Returns True if time since lastupdate is less than the current backoff window.
+// IsInBackOffSinceUpdate returns True iff time since lastupdate < the current backoff window.
 func (p *Backoff) IsInBackOffSinceUpdate(id string, eventTime time.Time) bool {
 	p.RLock()
 	defer p.RUnlock()
@@ -116,8 +116,7 @@ func (p *Backoff) IsInBackOffSinceUpdate(id string, eventTime time.Time) bool {
 	return eventTime.Sub(entry.lastUpdate) < entry.backoff
 }
 
-// Garbage collect records that have aged past maxDuration. Backoff users are expected
-// to invoke this periodically.
+// GC collects records that have aged past maxDuration.  Backoff users are expected to invoke this periodically.
 func (p *Backoff) GC() {
 	p.Lock()
 	defer p.Unlock()
@@ -136,14 +135,14 @@ func (p *Backoff) DeleteEntry(id string) {
 	delete(p.perItemBackoff, id)
 }
 
-// Take a lock on *Backoff, before calling initEntryUnsafe
+// initEntryUnsafe takes a lock on *Backoff, before calling initEntryUnsafe.
 func (p *Backoff) initEntryUnsafe(id string) *backoffEntry {
 	entry := &backoffEntry{backoff: p.defaultDuration}
 	p.perItemBackoff[id] = entry
 	return entry
 }
 
-// After 2*maxDuration we restart the backoff factor to the beginning
+// hasExpired returns true iff the lastUpdate is significantly greater (2x) then the maximum backoff time.
 func hasExpired(eventTime time.Time, lastUpdate time.Time, maxDuration time.Duration) bool {
 	return eventTime.Sub(lastUpdate) > maxDuration*2 // consider stable if it's ok for twice the maxDuration
 }
